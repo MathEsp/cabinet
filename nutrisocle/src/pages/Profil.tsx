@@ -163,7 +163,7 @@ export default function Profil({ profile }: { profile: Profile }) {
       </section>
 
       <p className="petit" style={{ textAlign: 'center' }}>
-        NutriSocle ne remplace pas un avis médical. Valeurs nutritionnelles : Anses, table Ciqual 2020 ; Open Food Facts.
+        NutriSocle version {__APP_VERSION__}. NutriSocle ne remplace pas un avis médical. Valeurs nutritionnelles : Anses, table Ciqual 2020 ; Open Food Facts.
       </p>
 
       {soignant && <SoignantForm initial={soignant} onClose={() => setSoignant(null)} />}
