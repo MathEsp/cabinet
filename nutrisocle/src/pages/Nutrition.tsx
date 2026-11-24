@@ -1,7 +1,13 @@
+import { useLiveQuery } from 'dexie-react-hooks'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { IconPlus, IconTrash } from '../components/Icons'
-import { db, type Profile, type Repas } from '../db'
+import { Modal, useToast } from '../components/ui'
+import { db, type MealItem, type Profile, type Repas } from '../db'
 import { useDay, useToday } from '../hooks'
+import { addDays, dayKey, fromDayKey } from '../lib/dates'
+import { sum } from '../lib/nutrition'
+import { ajouterItems } from '../lib/repas'
 import { fmt } from '../lib/text'
 
 export const REPAS: { id: Repas; label: string; au: string }[] = [
@@ -21,6 +27,18 @@ export default function Nutrition({ profile }: { profile: Profile }) {
   const pct = objectif > 0 ? Math.min(100, (totals.proteines / objectif) * 100) : 0
   const nbVerres = Math.max(4, Math.round(profile.objectifEauMl / VERRE_ML))
   const verresBus = Math.round(waterMl / VERRE_ML)
+
+  const toast = useToast()
+  const hier = dayKey(addDays(fromDayKey(today), -1))
+  const logsHier = useLiveQuery(() => db.foodLogs.where('dayKey').equals(hier).toArray(), [hier]) ?? []
+  const habituels = useLiveQuery(() => db.mealTemplates.toArray(), []) ?? []
+  const [aEnregistrer, setAEnregistrer] = useState<{ repas: string; items: MealItem[] } | null>(null)
+
+  async function recopierHier(repas: Repas, label: string) {
+    const items = logsHier.filter((l) => l.repas === repas).map(({ ref, nom, quantite, unite, apports }) => ({ ref, nom, quantite, unite, apports }))
+    await ajouterItems(items, today, repas)
+    toast(`${label} d’hier recopié : +${fmt(sum(items.map((i) => i.apports)).proteines)} g de protéines`)
+  }
 
   async function setVerres(n: number) {
     await db.water.put({ dayKey: today, ml: n * VERRE_ML })
@@ -74,9 +92,22 @@ export default function Nutrition({ profile }: { profile: Profile }) {
                 </button>
               </div>
             ))}
-            <Link to={`/nutrition/ajouter?repas=${r.id}`} style={{ fontWeight: 800, fontSize: 14, minHeight: 36, display: 'flex', alignItems: 'center' }}>
-              + Ajouter {r.au}
-            </Link>
+            <div className="puces" style={{ marginTop: 4 }}>
+              <Link to={`/nutrition/ajouter?repas=${r.id}`} className="btn clair" style={{ minHeight: 40, fontSize: 14, padding: '0 14px' }}>
+                + Ajouter {r.au}
+              </Link>
+              {items.length === 0 && logsHier.some((l) => l.repas === r.id) && (
+                <button type="button" className="btn discret" style={{ minHeight: 40, fontSize: 14, padding: '0 14px' }} onClick={() => recopierHier(r.id, r.label)}>
+                  Recopier d’hier
+                </button>
+              )}
+              {items.length > 0 && (
+                <button type="button" className="btn discret" style={{ minHeight: 40, fontSize: 14, padding: '0 14px' }}
+                  onClick={() => setAEnregistrer({ repas: r.label, items: items.map(({ ref, nom, quantite, unite, apports }) => ({ ref, nom, quantite, unite, apports })) })}>
+                  Enregistrer comme repas habituel
+                </button>
+              )}
+            </div>
           </section>
         )
       })}
@@ -110,7 +141,44 @@ export default function Nutrition({ profile }: { profile: Profile }) {
         </p>
       </section>
 
+      {habituels.length > 0 && (
+        <section className="entete" style={{ gap: 8 }}>
+          <h2>Mes repas habituels</h2>
+          <div className="carte liste">
+            {habituels.map((h) => (
+              <div key={h.id} className="rangee">
+                <div className="pousse" style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontWeight: 800 }}>{h.nom}</span>
+                  <span className="petit">{h.items.length} aliment{h.items.length > 1 ? 's' : ''} · {fmt(sum(h.items.map((i) => i.apports)).proteines)} g prot.</span>
+                </div>
+                <button type="button" className="btn rond discret" aria-label={`Supprimer le repas habituel ${h.nom}`}
+                  onClick={() => { if (window.confirm(`Supprimer le repas habituel « ${h.nom} » ?`)) db.mealTemplates.delete(h.id!) }}><IconTrash /></button>
+              </div>
+            ))}
+          </div>
+          <p className="petit">Tu les retrouves en haut de l’écran « Ajouter un aliment », à ajouter en un appui.</p>
+        </section>
+      )}
+
+      {aEnregistrer && <EnregistrerHabituel {...aEnregistrer} onClose={() => setAEnregistrer(null)} onSaved={(nom) => { setAEnregistrer(null); toast(`« ${nom} » enregistré dans tes repas habituels`) }} />}
+
       <p className="petit">Valeurs nutritionnelles : Anses, table Ciqual 2020, et Open Food Facts pour les produits scannés.</p>
     </main>
+  )
+}
+
+function EnregistrerHabituel({ repas, items, onClose, onSaved }: { repas: string; items: MealItem[]; onClose: () => void; onSaved: (nom: string) => void }) {
+  const [nom, setNom] = useState(`Mon ${repas.toLowerCase()}`)
+  async function enregistrer() {
+    const n = nom.trim() || `Mon ${repas.toLowerCase()}`
+    await db.mealTemplates.add({ nom: n, items })
+    onSaved(n)
+  }
+  return (
+    <Modal title="Repas habituel" onClose={onClose}>
+      <p className="petit">Ce repas pourra être ajouté en un appui : {items.map((i) => i.nom.split(',')[0]).join(', ')}.</p>
+      <label className="champ">Nom du repas<input value={nom} onChange={(e) => setNom(e.target.value)} /></label>
+      <button type="button" className="btn large" onClick={enregistrer}>Enregistrer</button>
+    </Modal>
   )
 }

@@ -8,7 +8,7 @@ injections, protéines, fibres, hydratation, confort digestif et soignants.
 C'est une application web installable (PWA) : on l'ouvre dans Chrome sur Android, puis « Ajouter à l'écran d'accueil ».
 Elle fonctionne ensuite hors connexion.
 
-## Fonctionnalités (version 0.2)
+## Fonctionnalités (version 0.3)
 
 - **Première ouverture** : avertissement médical, profil (taille, poids, traitement, dose prescrite, jour d'injection).
 - **Accueil** : cycle d'injection de la semaine (J0 à J+6) avec un message adapté au jour, « Ton socle » qui se construit
@@ -20,6 +20,8 @@ Elle fonctionne ensuite hors connexion.
   tolérante), quantité en grammes avec calcul immédiat des protéines, fibres, glucides et calories ; **compléments
   protéinés** (shakers, barres, boissons) ; **scan de code-barres** (lecteur Android natif ou lecteur intégré ZXing) via Open Food Facts ; création de produits à partir de
   l'étiquette ; suivi de l'eau verre par verre.
+  **Saisie rapide** : portions habituelles (« 1 œuf », « 1 steak haché », « 1 pot »…), favoris ajoutés en un appui,
+  repas habituels (un repas entier en un appui), « Recopier d'hier », et ajout express de protéines sans chercher l'aliment.
 - **Activité** : séances à la maison (douce, débutant, intermédiaire) à cocher exercice par exercice, séance douce
   proposée les jours difficiles (J+1/J+2 ou nausées/fatigue notées), carnet de salle avec rappel des charges de la dernière
   fois, marche/vélo/natation en minutes, pas du jour. Chaque séance ajoute une brique au socle.

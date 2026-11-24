@@ -1,15 +1,18 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { IconBack, IconBarcode, IconMinus, IconPlus, IconSearch, IconTrash } from '../components/Icons'
+import { IconBack, IconBarcode, IconMinus, IconPlus, IconSearch, IconStar, IconTrash } from '../components/Icons'
 import Scanner from '../components/Scanner'
 import { Modal, Segmented, useToast } from '../components/ui'
 import { searchFoods, type CiqualFood } from '../data/ciqual'
+import { portionsFor, type Portion } from '../data/portions'
 import { SUPPLEMENTS } from '../data/supplements'
-import { db, type CustomFood, type Repas } from '../db'
+import { db, type CustomFood, type Favorite, type MealItem, type Repas } from '../db'
 import { useCiqual, useToday } from '../hooks'
-import { forGrams, scale, type Nutrients } from '../lib/nutrition'
+import { addDays, dayKey, fromDayKey } from '../lib/dates'
+import { forGrams, scale, sum, type Nutrients } from '../lib/nutrition'
 import { fetchProduct } from '../lib/openfoodfacts'
+import { ajouterItems, itemsDuRepas } from '../lib/repas'
 import { fmt, fmt1, parseNumber } from '../lib/text'
 import { REPAS } from './Nutrition'
 
@@ -24,6 +27,8 @@ export interface Choix {
   unite: string
   defaut: number
   portionG?: number | null
+  /** Portions habituelles proposées (« 1 œuf », « 1 pot »…), en grammes. */
+  portions?: Portion[]
   conseil?: string
 }
 
@@ -37,8 +42,21 @@ function repasParDefaut(): Repas {
   return 'diner'
 }
 
+function apportsPour(mode: 'g' | 'portion', base: Nutrients, quantite: number): Nutrients {
+  return mode === 'g' ? forGrams(base, quantite) : scale(base, quantite)
+}
+
+function depuisFavori(f: Favorite): Choix {
+  return {
+    ref: f.ref, nom: f.nom, mode: f.mode, base: f.base, unite: f.unite, defaut: f.quantite,
+    detail: f.mode === 'g' ? `pour 100 g · ${fmt(f.base.proteines)} g prot.` : `${fmt(f.base.proteines)} g prot. par ${f.unite}`,
+    portions: f.mode === 'g' ? portionsFor(f.nom) : undefined,
+  }
+}
+
 function depuisCiqual(f: CiqualFood): Choix {
   const polyols = f.polyols ?? 0
+  const portions = portionsFor(f.nom)
   return {
     ref: `ciqual:${f.code}`,
     nom: f.nom,
@@ -46,7 +64,8 @@ function depuisCiqual(f: CiqualFood): Choix {
     mode: 'g',
     base: f.per100g,
     unite: 'g',
-    defaut: 100,
+    defaut: portions[0]?.g ?? 100,
+    portions,
     conseil: polyols >= 5 ? 'Riche en polyols : peut ballonner si l’estomac est sensible.' : undefined,
   }
 }
@@ -113,6 +132,25 @@ export default function AjoutAliment() {
     () => db.foodLogs.where('dayKey').equals(today).filter((l) => l.repas === repas).toArray(),
     [today, repas],
   ) ?? []
+  const hier = dayKey(addDays(fromDayKey(today), -1))
+  const repasHier = useLiveQuery(() => itemsDuRepas(hier, repas), [hier, repas]) ?? []
+  const favoris = useLiveQuery(() => db.favorites.toArray(), []) ?? []
+  const habituels = useLiveQuery(() => db.mealTemplates.toArray(), []) ?? []
+  const [rapide, setRapide] = useState(false)
+
+  async function ajouterPlusieurs(items: MealItem[], message: string) {
+    try {
+      await ajouterItems(items, today, repas)
+      toast(`${message} : +${fmt(sum(items.map((i) => i.apports)).proteines)} g de protéines`)
+    } catch (e) {
+      toast(`L’ajout n’a pas fonctionné : ${e instanceof Error ? e.message : 'erreur inconnue'}`)
+    }
+  }
+
+  async function ajouterFavori(f: Favorite) {
+    await ajouterPlusieurs([{ ref: f.ref, nom: f.nom, quantite: f.quantite, unite: f.unite, apports: apportsPour(f.mode, f.base, f.quantite) }], `${f.nom.split(',')[0]} ajouté`)
+  }
+
   const totalRepas = dansCeRepas.reduce((acc, l) => ({ p: acc.p + l.apports.proteines, f: acc.f + l.apports.fibres }), { p: 0, f: 0 })
 
   async function ajouter(c: Choix, quantite: number) {
@@ -214,6 +252,52 @@ export default function AjoutAliment() {
         </section>
       )}
 
+      {query.trim() === '' && (
+        <section className="carte" aria-label="Ajout rapide" style={{ gap: 10 }}>
+          <div className="ligne-titre"><h2>Ajout rapide</h2></div>
+          {repasHier.length > 0 && (
+            <button type="button" className="btn clair" onClick={() => ajouterPlusieurs(repasHier, `${REPAS.find((r) => r.id === repas)!.label} d’hier recopié`)}>
+              Recopier le {REPAS.find((r) => r.id === repas)!.label.toLowerCase()} d’hier ({repasHier.length} aliment{repasHier.length > 1 ? 's' : ''})
+            </button>
+          )}
+          {habituels.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              <p className="petit" style={{ fontWeight: 800 }}>Mes repas habituels</p>
+              {habituels.map((h) => (
+                <div key={h.id} className="rangee">
+                  <div className="pousse" style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: 800 }}>{h.nom}</span>
+                    <span className="petit">{h.items.map((i) => i.nom.split(',')[0]).join(', ')} · {fmt(sum(h.items.map((i) => i.apports)).proteines)} g prot.</span>
+                  </div>
+                  <button type="button" className="btn rond clair" aria-label={`Ajouter le repas ${h.nom}`} onClick={() => ajouterPlusieurs(h.items, `${h.nom} ajouté`)}><IconPlus /></button>
+                </div>
+              ))}
+            </div>
+          )}
+          {favoris.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              <p className="petit" style={{ fontWeight: 800 }}>Mes favoris · un appui sur + suffit</p>
+              {favoris.map((f) => (
+                <div key={f.id} className="rangee">
+                  <button type="button" className="pousse" onClick={() => setChoix(depuisFavori(f))}
+                    style={{ display: 'flex', flexDirection: 'column', background: 'none', border: 'none', padding: '6px 0', textAlign: 'left', cursor: 'pointer' }}>
+                    <span style={{ fontWeight: 800 }}>{f.nom}</span>
+                    <span className="petit">
+                      {f.mode === 'g' ? `${fmt(f.quantite)} g` : `${fmt(f.quantite)} ${f.unite}${f.quantite > 1 ? 's' : ''}`} · {fmt(apportsPour(f.mode, f.base, f.quantite).proteines)} g prot.
+                    </span>
+                  </button>
+                  <button type="button" className="btn rond clair" aria-label={`Ajouter ${f.nom}`} onClick={() => ajouterFavori(f)}><IconPlus /></button>
+                </div>
+              ))}
+            </div>
+          )}
+          {favoris.length === 0 && habituels.length === 0 && (
+            <p className="petit">Astuce : touche l’étoile d’un aliment pour l’ajouter à tes favoris, et retrouve-le ici en un appui.</p>
+          )}
+          <button type="button" className="btn discret" onClick={() => setRapide(true)}>Ajouter juste des protéines (sans chercher)</button>
+        </section>
+      )}
+
       <Segmented label="Catégorie" value={onglet} onChange={setOnglet} options={[
         { value: 'aliments', label: 'Aliments' },
         { value: 'complements', label: 'Compléments' },
@@ -285,6 +369,7 @@ export default function AjoutAliment() {
       <Link to="/nutrition" className="btn large">Terminé, voir ma journée</Link>
 
       {choix && <FeuilleQuantite choix={choix} repasLabel={repasLabel} onClose={() => setChoix(null)} onAdd={ajouter} />}
+      {rapide && <AjoutExpress repasLabel={repasLabel} onClose={() => setRapide(false)} onAdd={async (it) => { await ajouterPlusieurs([it], 'Ajouté'); setRapide(false) }} />}
       {scanner && <Scanner onCode={chercherCode} busy={scanBusy} message={scanMessage} onClose={() => setScanner(false)} />}
       {creation && (
         <CreationProduit
@@ -327,11 +412,35 @@ function FeuilleQuantite({ choix, repasLabel, onClose, onAdd }: {
   const pas = choix.mode === 'g' ? 10 : 0.5
   const presets = choix.mode === 'g' ? [50, 100, 150, 200, 250] : [0.5, 1, 2]
   const n = choix.mode === 'g' ? forGrams(choix.base, quantite) : scale(choix.base, quantite)
+  const favori = useLiveQuery(() => db.favorites.where('ref').equals(choix.ref).first(), [choix.ref])
+  const toast = useToast()
+  async function basculerFavori() {
+    if (favori) {
+      await db.favorites.delete(favori.id!)
+      toast('Retiré des favoris')
+    } else {
+      await db.favorites.add({ ref: choix.ref, nom: choix.nom, mode: choix.mode, base: choix.base, unite: choix.unite, quantite: quantite > 0 ? quantite : choix.defaut })
+      toast(`Ajouté aux favoris avec ${choix.mode === 'g' ? `${fmt(quantite)} g` : `${fmt(quantite)} ${choix.unite}`}`)
+    }
+  }
   const libelle = (q: number) => (choix.mode === 'g' ? `${fmt(q)} g` : `${fmt(q)} ${choix.unite}${q > 1 ? 's' : ''}`)
 
   return (
     <Modal title={choix.nom} onClose={onClose}>
-      <p className="petit">{choix.detail}</p>
+      <div className="ligne" style={{ gap: 8 }}>
+        <p className="petit pousse">{choix.detail}</p>
+        <button type="button" className="btn discret" style={{ minHeight: 40, padding: '0 12px', fontSize: 14, color: favori ? 'var(--abricot-fonce)' : 'var(--encre)' }}
+          aria-pressed={Boolean(favori)} onClick={basculerFavori}>
+          <IconStar filled={Boolean(favori)} /> {favori ? 'Favori' : 'Mettre en favori'}
+        </button>
+      </div>
+      {choix.portions && choix.portions.length > 0 && (
+        <div className="puces" style={{ justifyContent: 'center' }} aria-label="Portions habituelles">
+          {choix.portions.map((p) => (
+            <button key={p.label} type="button" className="puce" aria-pressed={quantite === p.g} onClick={() => setQuantite(p.g)}>{p.label} ({fmt(p.g)} g)</button>
+          ))}
+        </div>
+      )}
       <div className="ligne">
         <button type="button" className="btn rond discret" aria-label="Diminuer la quantité" onClick={() => setQuantite((q) => Math.max(pas, Math.round((q - pas) * 10) / 10))}><IconMinus /></button>
         <label className="pousse" style={{ textAlign: 'center' }}>
@@ -347,7 +456,7 @@ function FeuilleQuantite({ choix, repasLabel, onClose, onAdd }: {
         {choix.portionG ? (
           <button type="button" className="puce" aria-pressed={quantite === choix.portionG} onClick={() => setQuantite(choix.portionG!)}>1 portion ({fmt(choix.portionG)} g)</button>
         ) : null}
-        {presets.map((p) => (
+        {!(choix.portions && choix.portions.length > 0) && presets.map((p) => (
           <button key={p} type="button" className="puce" aria-pressed={quantite === p} onClick={() => setQuantite(p)}>{libelle(p)}</button>
         ))}
       </div>
@@ -359,8 +468,9 @@ function FeuilleQuantite({ choix, repasLabel, onClose, onAdd }: {
       </div>
       {choix.conseil && <p className="carte abricot" style={{ padding: 12, fontSize: 14 }}>{choix.conseil}</p>}
       <button type="button" className="btn large" disabled={quantite <= 0} onClick={() => onAdd(choix, quantite)}>
-        Ajouter {repasLabel} · +{fmt(n.proteines)} g prot.
+        Ajouter · +{fmt(n.proteines)} g de protéines
       </button>
+      <p className="petit" style={{ textAlign: 'center', marginTop: -6 }}>Sera ajouté {repasLabel}</p>
     </Modal>
   )
 }
@@ -419,6 +529,40 @@ function CreationProduit({ initial, message, onClose, onCreated }: {
       {champ('kcal', 'Énergie (kcal), facultatif')}
       {erreur && <p role="alert" style={{ color: 'var(--danger)', fontWeight: 700 }}>{erreur}</p>}
       <button type="button" className="btn large" onClick={creer}>Enregistrer le produit</button>
+    </Modal>
+  )
+}
+
+function AjoutExpress({ repasLabel, onClose, onAdd }: { repasLabel: string; onClose: () => void; onAdd: (it: MealItem) => void }) {
+  const [nom, setNom] = useState('')
+  const [prot, setProt] = useState('')
+  const [fib, setFib] = useState('')
+  const [kcal, setKcal] = useState('')
+  const [erreur, setErreur] = useState<string | null>(null)
+  function valider() {
+    const p = parseNumber(prot)
+    if (p === null || p < 0 || p > 200) return setErreur('Indique les protéines en grammes, par exemple 20.')
+    const f = parseNumber(fib) ?? 0
+    const k = parseNumber(kcal) ?? Math.round(4 * p + 2 * f)
+    onAdd({
+      ref: 'rapide', nom: nom.trim() || 'Ajout rapide', quantite: 1, unite: 'portion',
+      apports: { kcal: k, proteines: p, glucides: 0, lipides: 0, fibres: f },
+    })
+  }
+  return (
+    <Modal title="Ajout rapide" onClose={onClose}>
+      <p className="petit">Pour noter vite un repas pris dehors ou un aliment que tu ne trouves pas : seules les protéines sont obligatoires.</p>
+      <label className="champ">Qu’as-tu mangé ? (facultatif)<input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="ex. Repas à la cantine" /></label>
+      <div className="grille-2">
+        <label className="champ">Protéines (g)<input inputMode="decimal" value={prot} onChange={(e) => setProt(e.target.value)} placeholder="ex. 25" /></label>
+        <label className="champ">Fibres (g)<input inputMode="decimal" value={fib} onChange={(e) => setFib(e.target.value)} placeholder="facultatif" /></label>
+      </div>
+      <label className="champ">Énergie (kcal)<input inputMode="decimal" value={kcal} onChange={(e) => setKcal(e.target.value)} placeholder="facultatif" /></label>
+      <div className="puces">
+        {[10, 15, 20, 25, 30].map((g) => <button key={g} type="button" className="puce" aria-pressed={parseNumber(prot) === g} onClick={() => setProt(String(g))}>{g} g</button>)}
+      </div>
+      {erreur && <p role="alert" style={{ color: 'var(--danger)', fontWeight: 700 }}>{erreur}</p>}
+      <button type="button" className="btn large" onClick={valider}>Ajouter {repasLabel}</button>
     </Modal>
   )
 }
