@@ -97,3 +97,22 @@ describe('socle', () => {
     expect(r).toEqual({ briques: 3, joursProteines: 1, joursEau: 1, injections: 1, seances: 0 })
   })
 })
+
+describe('portions habituelles', async () => {
+  const { portionsFor } = await import('../data/portions')
+  it('propose des portions parlantes', () => {
+    expect(portionsFor('Oeuf, dur')[0]).toEqual({ label: '1 œuf', g: 50 })
+    expect(portionsFor('Boeuf, steak haché 5% MG, cuit')[0].label).toBe('1 steak haché')
+    expect(portionsFor('Poulet, filet, sans peau, sauté/poêlé')[0].label).toBe('1 filet')
+    expect(portionsFor('Haricot vert, cuit')[0]).toEqual({ label: '1 portion', g: 200 })
+    expect(portionsFor("Riz blanc, cuit, non salé")[0].label).toBe('1 petite assiette')
+    expect(portionsFor('Jambon cuit, supérieur')[0].label).toBe('1 tranche')
+  })
+  it('ne confond pas pomme et pomme de terre', () => {
+    expect(portionsFor('Pomme de terre, cuite à la vapeur')[0].label).toBe('1 pomme de terre')
+    expect(portionsFor('Pomme, crue, pulpe et peau')[0].label).toBe('1 pomme')
+  })
+  it('ne propose rien quand il ne sait pas', () => {
+    expect(portionsFor('Huile d’olive vierge extra')).toEqual([])
+  })
+})

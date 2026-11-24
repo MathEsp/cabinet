@@ -100,6 +100,32 @@ export interface StepsLog {
   pas: number
 }
 
+/** Un aliment enregistré dans le repas (utilisé par les favoris et les repas habituels). */
+export interface MealItem {
+  ref: string
+  nom: string
+  quantite: number
+  unite: string
+  apports: Nutrients
+}
+
+export interface Favorite {
+  id?: number
+  ref: string
+  nom: string
+  /** 'g' : base pour 100 g ; 'portion' : base pour 1 portion. */
+  mode: 'g' | 'portion'
+  base: Nutrients
+  unite: string
+  quantite: number
+}
+
+export interface MealTemplate {
+  id?: number
+  nom: string
+  items: MealItem[]
+}
+
 export interface Carer {
   id?: number
   prenom: string
@@ -133,6 +159,8 @@ export class NutriSocleDB extends Dexie {
   customFoods!: EntityTable<CustomFood, 'id'>
   activities!: EntityTable<Activity, 'id'>
   steps!: EntityTable<StepsLog, 'dayKey'>
+  favorites!: EntityTable<Favorite, 'id'>
+  mealTemplates!: EntityTable<MealTemplate, 'id'>
 
   constructor(name = 'nutrisocle') {
     super(name)
@@ -150,12 +178,16 @@ export class NutriSocleDB extends Dexie {
       activities: '++id, dayKey, type, date',
       steps: 'dayKey',
     })
+    this.version(3).stores({
+      favorites: '++id, ref',
+      mealTemplates: '++id',
+    })
   }
 }
 
 export const db = new NutriSocleDB()
 
-const TABLES = ['profile', 'weights', 'injections', 'foodLogs', 'water', 'symptoms', 'carers', 'customFoods', 'activities', 'steps'] as const
+const TABLES = ['profile', 'weights', 'injections', 'foodLogs', 'water', 'symptoms', 'carers', 'customFoods', 'activities', 'steps', 'favorites', 'mealTemplates'] as const
 
 /** Sauvegarde complète en JSON (les données ne quittent jamais le téléphone autrement). */
 export async function exportAll(database: NutriSocleDB = db): Promise<string> {
