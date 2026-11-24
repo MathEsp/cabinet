@@ -33,6 +33,7 @@ export default function Rapport({ profile }: { profile: Profile }) {
     symptoms: await db.symptoms.toArray(),
     activities: await db.activities.toArray(),
     steps: await db.steps.toArray(),
+    faim: await db.faim.toArray(),
   }), [])
 
   const rapport = useMemo(() => (donnees ? construireRapport({ profile, ...donnees }, jours) : null), [donnees, profile, jours])
@@ -56,6 +57,7 @@ export default function Rapport({ profile }: { profile: Profile }) {
       const { genererPdf, nomFichier } = await import('../lib/rapportPdf')
       await db.profile.update('me', { questionsRapport: questions })
       const blob = genererPdf(rapport, { destinataire, questions })
+      await db.profile.update('me', { rapportsCrees: (profile.rapportsCrees ?? 0) + 1 })
       const nom = nomFichier(rapport)
       const fichier = new File([blob], nom, { type: 'application/pdf' })
       const texte = `Bonjour${destinataire ? ` ${[destinataire.prenom, destinataire.nom].filter(Boolean).join(' ')}` : ''},\n\nVoici mon rapport de suivi NutriSocle ${periodeLabel(rapport)}.\n\nBien cordialement,\n${profile.prenom}`

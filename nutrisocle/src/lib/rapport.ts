@@ -1,6 +1,7 @@
 import { SYMPTOMES } from '../components/symptomes'
-import type { Activity, FoodLog, Injection, Profile, Repas, StepsLog, Symptom, SymptomType, WaterLog, WeightEntry } from '../db'
+import type { Activity, FaimLog, FoodLog, Injection, Profile, Repas, StepsLog, Symptom, SymptomType, WaterLog, WeightEntry } from '../db'
 import { addDays, dayKey, daysBetween, fromDayKey } from './dates'
+import { etatZone, type StatutZone } from './maintien'
 import { sum } from './nutrition'
 
 export interface RapportSource {
@@ -12,6 +13,7 @@ export interface RapportSource {
   symptoms: Symptom[]
   activities: Activity[]
   steps: StepsLog[]
+  faim?: FaimLog[]
 }
 
 export interface LigneTolerance {
@@ -74,6 +76,16 @@ export interface RapportData {
   repas: LigneRepas[]
   repasParJour: number
   activite: { seances: number; minutesParSemaine: number; pasMoy: number | null; joursPas: number }
+  apres: {
+    phase: 'diminution' | 'arret'
+    datePhase: string | null
+    reference: number
+    zone: number
+    statut: StatutZone | null
+    faimMoy: number | null
+    enviesMoy: number | null
+    joursFaim: number
+  } | null
 }
 
 const LIBELLES_REPAS: { id: Repas; label: string }[] = [
@@ -154,7 +166,23 @@ export function construireRapport(src: RapportSource, nbJours: number, aujourdHu
   const seances = src.activities.filter((a) => dansPeriode(a.dayKey))
   const pas = src.steps.filter((s) => dansPeriode(s.dayKey) && s.pas > 0)
 
+  // Après-traitement
+  let apres: RapportData['apres'] = null
+  if (p.phase === 'diminution' || p.phase === 'arret') {
+    const z = etatZone({ profile: p, weights: src.weights })
+    const faim = (src.faim ?? []).filter((f) => dansPeriode(f.dayKey))
+    const faimNotee = faim.filter((f) => f.faim > 0)
+    const enviesNotees = faim.filter((f) => f.envies > 0)
+    apres = {
+      phase: p.phase, datePhase: p.datePhase ?? null, reference: z.reference, zone: z.zone, statut: z.statut,
+      faimMoy: faimNotee.length ? moyenne(faimNotee.map((f) => f.faim)) : null,
+      enviesMoy: enviesNotees.length ? moyenne(enviesNotees.map((f) => f.envies)) : null,
+      joursFaim: faim.length,
+    }
+  }
+
   return {
+    apres,
     debut, fin, nbJours, joursSuivis, debutSuivi, prenom: p.prenom,
     traitement: { molecule: p.moleculeNom, frequence: p.frequence, doseActuelle: p.doseActuelleMg, injections: injections.length, attendues, changements },
     poids: {

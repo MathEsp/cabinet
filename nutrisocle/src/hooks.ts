@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useState } from 'react'
 import { loadCiqual, type CiqualFood } from './data/ciqual'
 import { db } from './db'
+import type { Donnees } from './lib/donnees'
 import { dayKey } from './lib/dates'
 import { sum } from './lib/nutrition'
 
@@ -46,4 +47,17 @@ export function useCiqual() {
     return () => { alive = false }
   }, [])
   return { foods, error }
+}
+
+/** Toutes les données, mises à jour en direct (pour les badges et le bilan des habitudes). */
+export function useDonnees(): Donnees | undefined {
+  return useLiveQuery(async () => {
+    const profile = await db.profile.get('me')
+    if (!profile) return undefined
+    const [weights, injections, foodLogs, water, symptoms, activities, steps, mealTemplates, faim, badges] = await Promise.all([
+      db.weights.toArray(), db.injections.toArray(), db.foodLogs.toArray(), db.water.toArray(), db.symptoms.toArray(),
+      db.activities.toArray(), db.steps.toArray(), db.mealTemplates.toArray(), db.faim.toArray(), db.badges.toArray(),
+    ])
+    return { profile, weights, injections, foodLogs, water, symptoms, activities, steps, mealTemplates, faim, badges }
+  }, [])
 }

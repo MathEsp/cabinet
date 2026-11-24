@@ -5,6 +5,9 @@ import Accueil from './pages/Accueil'
 import Activite from './pages/Activite'
 import AjoutAliment from './pages/AjoutAliment'
 import Bienvenue from './pages/Bienvenue'
+import Badges from './pages/Badges'
+import Apres from './pages/Apres'
+import BadgeWatcher from './components/BadgeWatcher'
 import InjectionPage from './pages/InjectionPage'
 import Nutrition from './pages/Nutrition'
 import Profil from './pages/Profil'
@@ -18,7 +21,7 @@ function Routed() {
   if (profile === null) return null
   if (!profile) return <Bienvenue />
 
-  const sansNav = location.pathname.startsWith('/nutrition/ajouter') || location.pathname.startsWith('/rapport')
+  const sansNav = location.pathname.startsWith('/nutrition/ajouter') || location.pathname.startsWith('/rapport') || location.pathname.startsWith('/badges') || location.pathname.startsWith('/apres')
   return (
     <>
       <Routes>
@@ -27,11 +30,14 @@ function Routed() {
         <Route path="/nutrition" element={<Nutrition profile={profile} />} />
         <Route path="/nutrition/ajouter" element={<AjoutAliment />} />
         <Route path="/activite" element={<Activite profile={profile} />} />
+        <Route path="/badges" element={<Badges />} />
+        <Route path="/apres" element={<Apres />} />
         <Route path="/rapport" element={<Rapport profile={profile} />} />
         <Route path="/profil" element={<Profil profile={profile} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       {!sansNav && <BottomNav />}
+      <BadgeWatcher />
     </>
   )
 }

@@ -8,7 +8,7 @@ injections, protéines, fibres, hydratation, confort digestif et soignants.
 C'est une application web installable (PWA) : on l'ouvre dans Chrome sur Android, puis « Ajouter à l'écran d'accueil ».
 Elle fonctionne ensuite hors connexion.
 
-## Fonctionnalités (version 0.4)
+## Fonctionnalités (version 0.5)
 
 - **Première ouverture** : avertissement médical, profil (taille, poids, traitement, dose prescrite, jour d'injection).
 - **Accueil** : cycle d'injection de la semaine (J0 à J+6) avec un message adapté au jour, « Ton socle » qui se construit
@@ -29,6 +29,14 @@ Elle fonctionne ensuite hors connexion.
   changements de dose, courbe de poids et tour de taille, tolérance (jours, intensité, moment du cycle), alimentation
   (moyennes sur les jours renseignés, apports par repas, fréquence et repas sautés), activité, et **questions du patient**.
   Envoi par le menu de partage d'Android, ou téléchargement puis e-mail.
+- **Badges et carnet de phrases** : 21 badges qui récompensent uniquement les habitudes (injections notées, jours
+  d'objectif protéines, eau, fibres, séances, pas, « jour difficile, mais présent », rapport envoyé, maintien après
+  l'arrêt), jamais la vitesse de perte de poids. Chaque badge débloque une phrase rangée dans le carnet. Célébration à
+  l'obtention, désactivable.
+- **Après le traitement** : bilan des habitudes des 4 dernières semaines (« Mon socle est-il prêt ? »), puis, une fois
+  la diminution ou l'arrêt déclaré, zone de stabilité du poids (référence ± 1,5, 2 ou 3 kg) avec messages bienveillants,
+  suivi quotidien de la faim et des pensées tournées vers la nourriture, et un conseil par semaine pendant 12 semaines.
+  Ces informations apparaissent aussi dans le rapport PDF.
 - **Profil** : pesées et tour de taille, objectifs modifiables, traitement, **soignants** (nom, profession, e-mail,
   téléphone), sauvegarde/restauration des données en JSON.
 

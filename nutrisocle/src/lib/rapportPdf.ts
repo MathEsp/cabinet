@@ -106,6 +106,13 @@ export function genererPdf(r: RapportData, opts: OptionsPdf): Blob {
   ligneG('Rythme', r.traitement.frequence === 'hebdo' ? '1 injection par semaine' : '1 injection par jour')
   ligneG('Dose actuelle', r.traitement.doseActuelle !== null ? `${fmt1(r.traitement.doseActuelle)} mg` : 'non renseignée')
   ligneG('Injections notées', `${r.traitement.injections} sur ${r.traitement.attendues} attendues`)
+  if (r.apres) {
+    ligneG(r.apres.phase === 'arret' ? 'Traitement arrêté le' : 'Diminution depuis le', r.apres.datePhase ? dateCourte(r.apres.datePhase) : '-')
+    ligneG('Zone de stabilité', `${fmt1(r.apres.reference - r.apres.zone)} - ${fmt1(r.apres.reference + r.apres.zone)} kg`)
+    ligneG('Poids / zone', r.apres.statut === 'dans' ? 'dans la zone' : r.apres.statut === 'au-dessus' ? 'au-dessus' : r.apres.statut === 'en-dessous' ? 'en dessous' : 'pas de pesée')
+    if (r.apres.faimMoy !== null) ligneG(`Faim moyenne (1 à 5, ${r.apres.joursFaim} j)`, fmt1(r.apres.faimMoy))
+    if (r.apres.enviesMoy !== null) ligneG('Pensées à la nourriture (1 à 5)', fmt1(r.apres.enviesMoy))
+  }
   if (r.traitement.changements.length === 0) ligneG('Changement de dose', 'aucun sur la période')
   r.traitement.changements.slice(-3).forEach((c) => ligneG(`Dose modifiée le ${dateCourte(c.dayKey)}`, `${c.de !== null ? fmt1(c.de) : '?'} -> ${c.a !== null ? fmt1(c.a) : '?'} mg`))
 

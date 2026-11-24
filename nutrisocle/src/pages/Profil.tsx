@@ -128,6 +128,10 @@ export default function Profil({ profile }: { profile: Profile }) {
             {c.telephone && <a className="btn rond discret" href={`tel:${c.telephone.replace(/\s/g, '')}`} aria-label={`Appeler ${c.prenom} ${c.nom}`}><IconPhone /></a>}
           </div>
         ))}
+        <div className="grille-2" style={{ gap: 8 }}>
+          <Link to="/badges" className="btn clair">Mes badges</Link>
+          <Link to="/apres" className="btn clair">Après le traitement</Link>
+        </div>
         <Link to="/rapport" className="carte sauge-clair" style={{ textDecoration: 'none' }}>
           <strong style={{ fontSize: 16 }}>Rapport pour mes soignants</strong>
           <p style={{ fontSize: 14 }}>Une page de synthèse (poids, tolérance, alimentation, activité) avec tes questions, à envoyer avant ta consultation.</p>
