@@ -19,6 +19,8 @@ export interface Profile {
   objectifFibresG: number
   objectifEauMl: number
   avertissementAccepte: boolean
+  /** Objectif de pas par jour (absent sur les profils créés avant la v0.2). */
+  objectifPas?: number
 }
 
 export interface WeightEntry {
@@ -71,6 +73,33 @@ export interface Symptom {
   jourCycle: number | null
 }
 
+export type ActivityType = 'maison' | 'salle' | 'cardio'
+
+export interface SetLine {
+  nom: string
+  series: number
+  reps: number
+  chargeKg: number | null
+}
+
+export interface Activity {
+  id?: number
+  dayKey: string
+  date: string
+  type: ActivityType
+  titre: string
+  dureeMin: number
+  /** 1 facile, 2 bien, 3 difficile. */
+  ressenti: 1 | 2 | 3 | null
+  /** Détail des exercices (salle) ou exercices cochés (maison). */
+  exercices: SetLine[]
+}
+
+export interface StepsLog {
+  dayKey: string
+  pas: number
+}
+
 export interface Carer {
   id?: number
   prenom: string
@@ -102,6 +131,8 @@ export class NutriSocleDB extends Dexie {
   symptoms!: EntityTable<Symptom, 'id'>
   carers!: EntityTable<Carer, 'id'>
   customFoods!: EntityTable<CustomFood, 'id'>
+  activities!: EntityTable<Activity, 'id'>
+  steps!: EntityTable<StepsLog, 'dayKey'>
 
   constructor(name = 'nutrisocle') {
     super(name)
@@ -115,12 +146,16 @@ export class NutriSocleDB extends Dexie {
       carers: '++id',
       customFoods: '++id, codeBarres, nom',
     })
+    this.version(2).stores({
+      activities: '++id, dayKey, type, date',
+      steps: 'dayKey',
+    })
   }
 }
 
 export const db = new NutriSocleDB()
 
-const TABLES = ['profile', 'weights', 'injections', 'foodLogs', 'water', 'symptoms', 'carers', 'customFoods'] as const
+const TABLES = ['profile', 'weights', 'injections', 'foodLogs', 'water', 'symptoms', 'carers', 'customFoods', 'activities', 'steps'] as const
 
 /** Sauvegarde complète en JSON (les données ne quittent jamais le téléphone autrement). */
 export async function exportAll(database: NutriSocleDB = db): Promise<string> {

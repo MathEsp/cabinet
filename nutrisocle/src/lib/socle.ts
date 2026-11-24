@@ -1,10 +1,11 @@
-import type { FoodLog, Injection, WaterLog } from '../db'
+import type { Activity, FoodLog, Injection, WaterLog } from '../db'
 import { sum } from './nutrition'
 
 export interface SocleInput {
   foodLogs: FoodLog[]
   water: WaterLog[]
   injections: Injection[]
+  activities?: Activity[]
   objectifProteinesG: number
   objectifEauMl: number
 }
@@ -15,12 +16,13 @@ export interface SocleResult {
   joursProteines: number
   joursEau: number
   injections: number
+  seances: number
 }
 
 /**
  * Le socle se construit brique par brique, uniquement avec de bonnes habitudes :
  * une brique par jour où l'objectif protéines est atteint, une par jour bien hydraté,
- * une par injection notée. Jamais pour « manger moins » ou « perdre vite ».
+ * une par injection notée, une par séance d'activité. Jamais pour « manger moins » ou « perdre vite ».
  */
 export function computeSocle(input: SocleInput): SocleResult {
   const byDay = new Map<string, FoodLog[]>()
@@ -35,5 +37,6 @@ export function computeSocle(input: SocleInput): SocleResult {
   }
   const joursEau = input.water.filter((w) => w.ml >= input.objectifEauMl).length
   const injections = input.injections.length
-  return { briques: joursProteines + joursEau + injections, joursProteines, joursEau, injections }
+  const seances = input.activities?.length ?? 0
+  return { briques: joursProteines + joursEau + injections + seances, joursProteines, joursEau, injections, seances }
 }

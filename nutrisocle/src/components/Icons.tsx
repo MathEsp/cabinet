@@ -20,6 +20,9 @@ export const IconSyringe = ({ size }: { size?: number }) => (
 export const IconLeaf = () => (
   <Svg><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10Z" /><path d="M2 21c0-3 1.9-5.4 5.1-6" /></Svg>
 )
+export const IconDumbbell = () => (
+  <Svg><path d="M6.5 6.5v11" /><path d="M17.5 6.5v11" /><path d="M3 9.5v5" /><path d="M21 9.5v5" /><path d="M6.5 12h11" /></Svg>
+)
 export const IconUser = () => (
   <Svg><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></Svg>
 )
