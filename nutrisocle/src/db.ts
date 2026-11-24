@@ -21,6 +21,8 @@ export interface Profile {
   avertissementAccepte: boolean
   /** Objectif de pas par jour (absent sur les profils créés avant la v0.2). */
   objectifPas?: number
+  /** Brouillon des questions du patient pour son prochain rapport. */
+  questionsRapport?: string
 }
 
 export interface WeightEntry {

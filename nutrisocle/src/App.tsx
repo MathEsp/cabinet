@@ -8,6 +8,7 @@ import Bienvenue from './pages/Bienvenue'
 import InjectionPage from './pages/InjectionPage'
 import Nutrition from './pages/Nutrition'
 import Profil from './pages/Profil'
+import Rapport from './pages/Rapport'
 
 function Routed() {
   const profile = useProfile()
@@ -17,7 +18,7 @@ function Routed() {
   if (profile === null) return null
   if (!profile) return <Bienvenue />
 
-  const sansNav = location.pathname.startsWith('/nutrition/ajouter')
+  const sansNav = location.pathname.startsWith('/nutrition/ajouter') || location.pathname.startsWith('/rapport')
   return (
     <>
       <Routes>
@@ -26,6 +27,7 @@ function Routed() {
         <Route path="/nutrition" element={<Nutrition profile={profile} />} />
         <Route path="/nutrition/ajouter" element={<AjoutAliment />} />
         <Route path="/activite" element={<Activite profile={profile} />} />
+        <Route path="/rapport" element={<Rapport profile={profile} />} />
         <Route path="/profil" element={<Profil profile={profile} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

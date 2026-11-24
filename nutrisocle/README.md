@@ -8,7 +8,7 @@ injections, protéines, fibres, hydratation, confort digestif et soignants.
 C'est une application web installable (PWA) : on l'ouvre dans Chrome sur Android, puis « Ajouter à l'écran d'accueil ».
 Elle fonctionne ensuite hors connexion.
 
-## Fonctionnalités (version 0.3)
+## Fonctionnalités (version 0.4)
 
 - **Première ouverture** : avertissement médical, profil (taille, poids, traitement, dose prescrite, jour d'injection).
 - **Accueil** : cycle d'injection de la semaine (J0 à J+6) avec un message adapté au jour, « Ton socle » qui se construit
@@ -25,6 +25,10 @@ Elle fonctionne ensuite hors connexion.
 - **Activité** : séances à la maison (douce, débutant, intermédiaire) à cocher exercice par exercice, séance douce
   proposée les jours difficiles (J+1/J+2 ou nausées/fatigue notées), carnet de salle avec rappel des charges de la dernière
   fois, marche/vélo/natation en minutes, pas du jour. Chaque séance ajoute une brique au socle.
+- **Rapport pour les soignants** : une page A4 de synthèse (PDF créé sur le téléphone) avec chiffres clés, traitement et
+  changements de dose, courbe de poids et tour de taille, tolérance (jours, intensité, moment du cycle), alimentation
+  (moyennes sur les jours renseignés, apports par repas, fréquence et repas sautés), activité, et **questions du patient**.
+  Envoi par le menu de partage d'Android, ou téléchargement puis e-mail.
 - **Profil** : pesées et tour de taille, objectifs modifiables, traitement, **soignants** (nom, profession, e-mail,
   téléphone), sauvegarde/restauration des données en JSON.
 

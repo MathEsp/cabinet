@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { IconMail, IconPhone, IconTrash } from '../components/Icons'
 import { Modal, useToast } from '../components/ui'
 import { findMolecule, MOLECULES } from '../data/molecules'
@@ -127,10 +128,11 @@ export default function Profil({ profile }: { profile: Profile }) {
             {c.telephone && <a className="btn rond discret" href={`tel:${c.telephone.replace(/\s/g, '')}`} aria-label={`Appeler ${c.prenom} ${c.nom}`}><IconPhone /></a>}
           </div>
         ))}
-        <div className="carte sauge-clair">
-          <strong>Rapport PDF pour tes soignants</strong>
-          <p style={{ fontSize: 14 }}>Bientôt : un résumé de tes injections, de ton poids, de tes apports et de tes symptômes, à envoyer en un geste.</p>
-        </div>
+        <Link to="/rapport" className="carte sauge-clair" style={{ textDecoration: 'none' }}>
+          <strong style={{ fontSize: 16 }}>Rapport pour mes soignants</strong>
+          <p style={{ fontSize: 14 }}>Une page de synthèse (poids, tolérance, alimentation, activité) avec tes questions, à envoyer avant ta consultation.</p>
+          <span className="btn auto" style={{ minHeight: 44 }}>Préparer mon rapport</span>
+        </Link>
       </section>
 
       <section className="carte">
