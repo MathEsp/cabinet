@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { IconBack, IconBarcode, IconMinus, IconPlus, IconSearch } from '../components/Icons'
+import { IconBack, IconBarcode, IconMinus, IconPlus, IconSearch, IconTrash } from '../components/Icons'
 import Scanner from '../components/Scanner'
 import { Modal, Segmented, useToast } from '../components/ui'
 import { searchFoods, type CiqualFood } from '../data/ciqual'
@@ -10,7 +10,7 @@ import { db, type CustomFood, type Repas } from '../db'
 import { useCiqual, useToday } from '../hooks'
 import { forGrams, scale, type Nutrients } from '../lib/nutrition'
 import { fetchProduct } from '../lib/openfoodfacts'
-import { fmt, parseNumber } from '../lib/text'
+import { fmt, fmt1, parseNumber } from '../lib/text'
 import { REPAS } from './Nutrition'
 
 /** Un élément que l'on peut ajouter : aliment Ciqual, complément ou produit perso. */
@@ -109,13 +109,27 @@ export default function AjoutAliment() {
 
   const repasLabel = REPAS.find((r) => r.id === repas)!.au
 
+  const dansCeRepas = useLiveQuery(
+    () => db.foodLogs.where('dayKey').equals(today).filter((l) => l.repas === repas).toArray(),
+    [today, repas],
+  ) ?? []
+  const totalRepas = dansCeRepas.reduce((acc, l) => ({ p: acc.p + l.apports.proteines, f: acc.f + l.apports.fibres }), { p: 0, f: 0 })
+
   async function ajouter(c: Choix, quantite: number) {
+    if (!(quantite > 0)) {
+      toast('Indique une quantité.')
+      return
+    }
     const apports = c.mode === 'g' ? forGrams(c.base, quantite) : scale(c.base, quantite)
-    await db.foodLogs.add({
-      dayKey: today, repas, ref: c.ref, nom: c.nom, quantite, unite: c.unite, apports, createdAt: new Date().toISOString(),
-    })
-    setChoix(null)
-    toast(`Ajouté ${repasLabel} : +${fmt(apports.proteines)} g de protéines`)
+    try {
+      await db.foodLogs.add({
+        dayKey: today, repas, ref: c.ref, nom: c.nom, quantite, unite: c.unite, apports, createdAt: new Date().toISOString(),
+      })
+      setChoix(null)
+      toast(`Ajouté ${repasLabel} : +${fmt(apports.proteines)} g de protéines`)
+    } catch (e) {
+      toast(`L’ajout n’a pas fonctionné : ${e instanceof Error ? e.message : 'erreur inconnue'}`)
+    }
   }
 
   async function chercherCode(code: string) {
@@ -136,11 +150,21 @@ export default function AjoutAliment() {
         setScanner(false)
         return
       }
+      const a = produit.apports
+      if (a.proteines + a.glucides + a.lipides + a.fibres === 0) {
+        setScanMessage(`« ${produit.nom} » est connu, mais sans valeurs nutritionnelles. Recopie celles de l’étiquette.`)
+        setCreation({ nom: produit.nom, marque: produit.marque, codeBarres: propre, base: '100g' })
+        setScanner(false)
+        return
+      }
       const id = await db.customFoods.add(produit)
       setScanner(false)
       setChoix(depuisPerso({ ...produit, id }))
     } catch (e) {
-      setScanMessage(e instanceof Error ? e.message : 'Recherche impossible. Vérifie ta connexion.')
+      const horsLigne = typeof navigator !== 'undefined' && !navigator.onLine
+      setScanMessage(horsLigne || e instanceof TypeError
+        ? 'Pas de connexion internet : impossible de chercher le produit. Réessaie avec du réseau, ou crée-le à la main.'
+        : e instanceof Error ? e.message : 'Recherche impossible.')
     } finally {
       setScanBusy(false)
     }
@@ -171,6 +195,24 @@ export default function AjoutAliment() {
           <IconBarcode />
         </button>
       </div>
+
+      {dansCeRepas.length > 0 && (
+        <section className="carte sauge-clair" aria-label={`Déjà ${repasLabel}`} style={{ gap: 6 }}>
+          <div className="ligne-titre">
+            <strong>Déjà {repasLabel}</strong>
+            <span style={{ fontSize: 14, fontWeight: 800 }}>{fmt(totalRepas.p)} g prot. · {fmt(totalRepas.f)} g fibres</span>
+          </div>
+          {dansCeRepas.map((l) => (
+            <div key={l.id} className="ligne" style={{ gap: 8, fontSize: 14 }}>
+              <span className="pousse">{l.nom} · {l.unite === 'g' ? `${fmt(l.quantite)} g` : `${fmt(l.quantite)} ${l.unite}${l.quantite > 1 ? 's' : ''}`}</span>
+              <span style={{ fontWeight: 800 }}>{fmt(l.apports.proteines)} g</span>
+              <button type="button" className="btn rond discret" style={{ width: 36, height: 36, minHeight: 36 }} aria-label={`Retirer ${l.nom}`} onClick={() => db.foodLogs.delete(l.id!)}>
+                <IconTrash />
+              </button>
+            </div>
+          ))}
+        </section>
+      )}
 
       <Segmented label="Catégorie" value={onglet} onChange={setOnglet} options={[
         { value: 'aliments', label: 'Aliments' },
@@ -240,7 +282,7 @@ export default function AjoutAliment() {
         </>
       )}
 
-      <Link to="/nutrition" className="btn large contour">Terminé</Link>
+      <Link to="/nutrition" className="btn large">Terminé, voir ma journée</Link>
 
       {choix && <FeuilleQuantite choix={choix} repasLabel={repasLabel} onClose={() => setChoix(null)} onAdd={ajouter} />}
       {scanner && <Scanner onCode={chercherCode} busy={scanBusy} message={scanMessage} onClose={() => setScanner(false)} />}
@@ -276,7 +318,12 @@ function ListeCiqual({ titre, liste, onPick }: { titre?: string; liste: CiqualFo
 function FeuilleQuantite({ choix, repasLabel, onClose, onAdd }: {
   choix: Choix; repasLabel: string; onClose: () => void; onAdd: (c: Choix, q: number) => void
 }) {
-  const [quantite, setQuantite] = useState(choix.defaut)
+  const [saisie, setSaisie] = useState(fmt1(choix.defaut))
+  const quantite = parseNumber(saisie) ?? 0
+  const setQuantite = (q: number | ((q: number) => number)) => {
+    const v = typeof q === 'function' ? q(quantite) : q
+    setSaisie(fmt1(Math.max(0, v)))
+  }
   const pas = choix.mode === 'g' ? 10 : 0.5
   const presets = choix.mode === 'g' ? [50, 100, 150, 200, 250] : [0.5, 1, 2]
   const n = choix.mode === 'g' ? forGrams(choix.base, quantite) : scale(choix.base, quantite)
@@ -289,8 +336,9 @@ function FeuilleQuantite({ choix, repasLabel, onClose, onAdd }: {
         <button type="button" className="btn rond discret" aria-label="Diminuer la quantité" onClick={() => setQuantite((q) => Math.max(pas, Math.round((q - pas) * 10) / 10))}><IconMinus /></button>
         <label className="pousse" style={{ textAlign: 'center' }}>
           <span className="sr-only">Quantité {choix.mode === 'g' ? 'en grammes' : 'en portions'}</span>
-          <input inputMode="decimal" value={fmt(quantite)} style={{ width: '100%', textAlign: 'center', fontSize: 28, fontWeight: 900, border: 'none', background: 'transparent' }}
-            onChange={(e) => { const v = parseNumber(e.target.value); if (v !== null && v >= 0) setQuantite(v) }} />
+          <input inputMode="decimal" value={saisie} onFocus={(e) => e.target.select()}
+            style={{ width: '100%', textAlign: 'center', fontSize: 28, fontWeight: 900, border: 'none', borderBottom: '2px solid var(--ligne-forte)', background: 'transparent' }}
+            onChange={(e) => setSaisie(e.target.value.replace(/[^0-9.,]/g, ''))} />
           <span className="petit">{choix.mode === 'g' ? 'grammes' : `${choix.unite}${quantite > 1 ? 's' : ''}`}</span>
         </label>
         <button type="button" className="btn rond discret" aria-label="Augmenter la quantité" onClick={() => setQuantite((q) => Math.round((q + pas) * 10) / 10)}><IconPlus /></button>

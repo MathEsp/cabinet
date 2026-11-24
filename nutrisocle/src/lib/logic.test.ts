@@ -94,6 +94,6 @@ describe('socle', () => {
       objectifProteinesG: 90,
       objectifEauMl: 2000,
     })
-    expect(r).toEqual({ briques: 3, joursProteines: 1, joursEau: 1, injections: 1 })
+    expect(r).toEqual({ briques: 3, joursProteines: 1, joursEau: 1, injections: 1, seances: 0 })
   })
 })

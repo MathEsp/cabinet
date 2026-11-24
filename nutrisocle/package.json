@@ -1,7 +1,7 @@
 {
   "name": "nutrisocle",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,11 +11,13 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "barcode-detector": "^3.2.5",
     "dexie": "^4.4.7",
     "dexie-react-hooks": "^4.4.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "react-router-dom": "^7.18.6"
+    "react-router-dom": "^7.18.6",
+    "zxing-wasm": "^3.1.8"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",

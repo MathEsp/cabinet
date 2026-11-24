@@ -2,6 +2,7 @@ import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-d
 import { BottomNav, ToastProvider } from './components/ui'
 import { useProfile } from './hooks'
 import Accueil from './pages/Accueil'
+import Activite from './pages/Activite'
 import AjoutAliment from './pages/AjoutAliment'
 import Bienvenue from './pages/Bienvenue'
 import InjectionPage from './pages/InjectionPage'
@@ -24,6 +25,7 @@ function Routed() {
         <Route path="/injection" element={<InjectionPage profile={profile} />} />
         <Route path="/nutrition" element={<Nutrition profile={profile} />} />
         <Route path="/nutrition/ajouter" element={<AjoutAliment />} />
+        <Route path="/activite" element={<Activite profile={profile} />} />
         <Route path="/profil" element={<Profil profile={profile} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

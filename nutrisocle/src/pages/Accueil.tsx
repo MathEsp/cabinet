@@ -20,6 +20,7 @@ export default function Accueil({ profile }: { profile: Profile }) {
   const [symptomesOuverts, setSymptomesOuverts] = useState(false)
   const allLogs = useLiveQuery(() => db.foodLogs.toArray(), []) ?? []
   const allWater = useLiveQuery(() => db.water.toArray(), []) ?? []
+  const allActivities = useLiveQuery(() => db.activities.toArray(), []) ?? []
 
   const hebdo = profile.frequence === 'hebdo'
   const jour = hebdo ? cycleDay(injections) : null
@@ -28,6 +29,7 @@ export default function Accueil({ profile }: { profile: Profile }) {
     foodLogs: allLogs,
     water: allWater,
     injections,
+    activities: allActivities,
     objectifProteinesG: profile.objectifProteinesG,
     objectifEauMl: profile.objectifEauMl,
   })
@@ -107,7 +109,7 @@ export default function Accueil({ profile }: { profile: Profile }) {
         </div>
         <p className="petit">
           <strong style={{ color: 'var(--encre)' }}>{socle.briques} brique{socle.briques > 1 ? 's' : ''}</strong> posée{socle.briques > 1 ? 's' : ''} :
-          {' '}{socle.joursProteines} jour{socle.joursProteines > 1 ? 's' : ''} protéines, {socle.joursEau} jour{socle.joursEau > 1 ? 's' : ''} bien hydraté{socle.joursEau > 1 ? 's' : ''}, {socle.injections} injection{socle.injections > 1 ? 's' : ''} notée{socle.injections > 1 ? 's' : ''}.
+          {' '}{socle.joursProteines} jour{socle.joursProteines > 1 ? 's' : ''} protéines, {socle.joursEau} jour{socle.joursEau > 1 ? 's' : ''} bien hydraté{socle.joursEau > 1 ? 's' : ''}, {socle.injections} injection{socle.injections > 1 ? 's' : ''} notée{socle.injections > 1 ? 's' : ''}, {socle.seances} séance{socle.seances > 1 ? 's' : ''} d’activité.
         </p>
       </section>
 

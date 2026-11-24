@@ -1,13 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { fmt } from '../lib/text'
-import { IconClose, IconHome, IconLeaf, IconSyringe, IconUser } from './Icons'
+import { IconClose, IconDumbbell, IconHome, IconLeaf, IconSyringe, IconUser } from './Icons'
 
 export function BottomNav() {
   const items = [
     { to: '/', label: 'Accueil', icon: <IconHome />, end: true },
     { to: '/injection', label: 'Injection', icon: <IconSyringe />, end: false },
     { to: '/nutrition', label: 'Nutrition', icon: <IconLeaf />, end: false },
+    { to: '/activite', label: 'Activité', icon: <IconDumbbell />, end: false },
     { to: '/profil', label: 'Profil', icon: <IconUser />, end: false },
   ]
   return (
