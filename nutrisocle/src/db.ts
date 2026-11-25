@@ -21,6 +21,37 @@ export interface Profile {
   avertissementAccepte: boolean
   /** Objectif de pas par jour (absent sur les profils créés avant la v0.2). */
   objectifPas?: number
+  /** Brouillon des questions du patient pour son prochain rapport. */
+  questionsRapport?: string
+  /** Nombre de rapports PDF créés (pour le badge). */
+  rapportsCrees?: number
+  /** Afficher les célébrations de badges (activé par défaut). */
+  celebrations?: boolean
+  /** Phase du parcours : sous traitement, en diminution, ou traitement arrêté. */
+  phase?: Phase
+  /** Date de début de la diminution ou de l'arrêt. */
+  datePhase?: string
+  /** Poids de référence au moment de la diminution/l'arrêt. */
+  poidsReferenceKg?: number
+  /** Demi-largeur de la zone de stabilité, en kg (par défaut 2). */
+  zoneStabiliteKg?: number
+}
+
+export type Phase = 'traitement' | 'diminution' | 'arret'
+
+export interface BadgeObtenu {
+  id: string
+  obtenuLe: string
+  /** La célébration a été vue. */
+  vu: boolean
+}
+
+export interface FaimLog {
+  dayKey: string
+  /** Faim ressentie, de 1 (aucune) à 5 (très forte). */
+  faim: number
+  /** Pensées tournées vers la nourriture (« food noise »), de 1 à 5. */
+  envies: number
 }
 
 export interface WeightEntry {
@@ -161,6 +192,8 @@ export class NutriSocleDB extends Dexie {
   steps!: EntityTable<StepsLog, 'dayKey'>
   favorites!: EntityTable<Favorite, 'id'>
   mealTemplates!: EntityTable<MealTemplate, 'id'>
+  badges!: EntityTable<BadgeObtenu, 'id'>
+  faim!: EntityTable<FaimLog, 'dayKey'>
 
   constructor(name = 'nutrisocle') {
     super(name)
@@ -182,12 +215,16 @@ export class NutriSocleDB extends Dexie {
       favorites: '++id, ref',
       mealTemplates: '++id',
     })
+    this.version(4).stores({
+      badges: 'id',
+      faim: 'dayKey',
+    })
   }
 }
 
 export const db = new NutriSocleDB()
 
-const TABLES = ['profile', 'weights', 'injections', 'foodLogs', 'water', 'symptoms', 'carers', 'customFoods', 'activities', 'steps', 'favorites', 'mealTemplates'] as const
+const TABLES = ['profile', 'weights', 'injections', 'foodLogs', 'water', 'symptoms', 'carers', 'customFoods', 'activities', 'steps', 'favorites', 'mealTemplates', 'badges', 'faim'] as const
 
 /** Sauvegarde complète en JSON (les données ne quittent jamais le téléphone autrement). */
 export async function exportAll(database: NutriSocleDB = db): Promise<string> {

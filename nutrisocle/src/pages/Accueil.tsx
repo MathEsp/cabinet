@@ -2,12 +2,14 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { IconChevron, IconSyringe, LogoMark } from '../components/Icons'
-import SymptomForm, { symptomLabel } from '../components/SymptomForm'
+import SymptomForm from '../components/SymptomForm'
+import { symptomLabel } from '../components/symptomes'
 import { Gauge } from '../components/ui'
 import { db, type Profile } from '../db'
 import { useDay, useInjections, useToday } from '../hooks'
 import { addDays, fromDayKey, JOURS_COURTS, longDate, shortDate } from '../lib/dates'
 import { cycleDay, cycleMessage, latest } from '../lib/injection'
+import { etatZone, semaineDepuis } from '../lib/maintien'
 import { computeSocle } from '../lib/socle'
 import { fmt1 } from '../lib/text'
 
@@ -22,8 +24,12 @@ export default function Accueil({ profile }: { profile: Profile }) {
   const allWater = useLiveQuery(() => db.water.toArray(), []) ?? []
   const allActivities = useLiveQuery(() => db.activities.toArray(), []) ?? []
 
-  const hebdo = profile.frequence === 'hebdo'
+  const nbBadges = useLiveQuery(() => db.badges.count(), []) ?? 0
+  const pesees = useLiveQuery(() => db.weights.toArray(), [])
+  const arret = profile.phase === 'arret'
+  const hebdo = profile.frequence === 'hebdo' && !arret
   const jour = hebdo ? cycleDay(injections) : null
+  const zone = arret && pesees ? etatZone({ profile, weights: pesees }) : null
   const derniere = latest(injections)
   const socle = computeSocle({
     foodLogs: allLogs,
@@ -71,7 +77,20 @@ export default function Accueil({ profile }: { profile: Profile }) {
         </p>
       </div>
 
-      <section className="carte abricot" aria-label="Mon cycle">
+      {arret && zone && (
+        <Link to="/apres" className="carte abricot" style={{ textDecoration: 'none', color: 'inherit' }} aria-label="Après le traitement">
+          <span className="etiquette">Après le traitement · semaine {semaineDepuis(profile.datePhase)}</span>
+          <p style={{ fontSize: 15, lineHeight: 1.45 }}>
+            {zone.statut === 'dans' && 'Tu es dans ta zone de stabilité. Ton socle tient : continue comme ça !'}
+            {zone.statut === 'au-dessus' && 'Ton poids est un peu au-dessus de ta zone. On revient aux bases, en douceur.'}
+            {zone.statut === 'en-dessous' && 'Ton poids est sous ta zone : pense à bien manger, surtout des protéines.'}
+            {zone.statut === null && 'Note une pesée pour suivre ta zone de stabilité.'}
+          </p>
+          <span className="btn blanc auto">Noter ma faim du jour</span>
+        </Link>
+      )}
+
+      {!arret && <section className="carte abricot" aria-label="Mon cycle">
         <span className="etiquette">{hebdo ? 'Ton cycle cette semaine' : 'Ton traitement'}</span>
         {hebdo && derniere && (
           <div className="cycle">
@@ -93,12 +112,12 @@ export default function Accueil({ profile }: { profile: Profile }) {
           <p style={{ fontSize: 14 }}>Noté aujourd’hui : {symptoms.map((s) => symptomLabel(s.type).toLowerCase()).join(', ')}.</p>
         )}
         <button type="button" className="btn blanc auto" onClick={() => setSymptomesOuverts(true)}>Noter comment je me sens</button>
-      </section>
+      </section>}
 
       <section className="carte" aria-label="Mon socle">
         <div className="ligne-titre">
           <h2>Ton socle</h2>
-          <span className="petit" style={{ fontWeight: 700 }}>Étage {etage}</span>
+          <Link to="/badges" style={{ fontWeight: 800, fontSize: 14 }}>Étage {etage} · {nbBadges} badge{nbBadges > 1 ? 's' : ''}</Link>
         </div>
         <div className="briques" aria-hidden="true">
           {rangs.map((rang, r) => (
@@ -132,6 +151,13 @@ export default function Accueil({ profile }: { profile: Profile }) {
         </span>
         <span style={{ color: 'var(--doux)' }}><IconChevron /></span>
       </Link>
+
+      {!arret && (
+        <Link to="/apres" className="carte" style={{ textDecoration: 'none', color: 'inherit', gap: 6 }}>
+          <div className="ligne-titre"><h2>Préparer l’après-traitement</h2><span style={{ color: 'var(--doux)' }}><IconChevron /></span></div>
+          <p className="petit">Le traitement aide, le socle reste : vois quelles habitudes sont déjà solides pour la suite.</p>
+        </Link>
+      )}
 
       {symptomesOuverts && <SymptomForm jourCycle={jour} onClose={() => setSymptomesOuverts(false)} />}
     </main>
